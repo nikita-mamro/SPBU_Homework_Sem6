@@ -7,35 +7,36 @@ import logic.metrics_finder as metrics_finder
 
 
 def solve_system():
-    print('Решение системы Ax=b для A и b = (200, -600):')
+    print('\nРешение системы Ax=b для A и b = (200, -600):\n')
     A = np.copy(constants.A)
     x_accurate = system_solver.find_solution(A, constants.b_a, True)
     print(x_accurate)
-    print('Решение системы Ax=b для A и b = (199, -601):')
+    print('\nРешение системы Ax=b для A и b = (199, -601):\n')
     A = np.copy(constants.A)
     x_error = system_solver.find_solution(A, constants.b_b, True)
     print(x_error)
-    print('Число обусловленности A:')
+    print('\nЧисло обусловленности A:\n')
     A = np.copy(constants.A)
     condition_number = metrics_finder.find_cond(constants.A)
     print(condition_number)
-    print('Фактическая погрешность;')
+    print('\nФактическая погрешность:\n')
     actual_error = metrics_finder.find_norm(np.subtract(
         x_accurate, x_error)) / metrics_finder.find_norm(x_accurate)
     print(actual_error)
-    print('Оценка погрешности:')
+    print('\nОценка погрешности:\n')
+    b_delta = np.subtract(constants.b_a, constants.b_b)
     estimated_error = 0
     print(estimated_error)
 
 
 def find_inverse():
-    print('Обратная матрица для M')
+    print('\nОбратная матрица для M\n')
     inverse_matrix = inverse_matrix_finder.find_inverse(constants.M)
     print(inverse_matrix)
 
 
 def find_determinant():
-    print('Определитель M:')
+    print('\nОпределитель M:\n')
     det = matrix_determinant_finder.find_determinant(constants.M)
     print(det)
 
