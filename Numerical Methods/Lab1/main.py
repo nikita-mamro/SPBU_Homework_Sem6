@@ -8,16 +8,20 @@ import logic.metrics_finder as metrics_finder
 
 def solve_system():
     print('Решение системы Ax=b для A и b = (200, -600):')
-    x_accurate = system_solver.find_solution(constants.A, constants.b_a, True)
+    A = np.copy(constants.A)
+    x_accurate = system_solver.find_solution(A, constants.b_a, True)
     print(x_accurate)
     print('Решение системы Ax=b для A и b = (199, -601):')
-    x_error = system_solver.find_solution(constants.A, constants.b_b, True)
+    A = np.copy(constants.A)
+    x_error = system_solver.find_solution(A, constants.b_b, True)
     print(x_error)
     print('Число обусловленности A:')
+    A = np.copy(constants.A)
     condition_number = metrics_finder.find_cond(constants.A)
     print(condition_number)
     print('Фактическая погрешность;')
-    actual_error = metrics_finder.find_norm(np.subtract(x_accurate, x_error))
+    actual_error = metrics_finder.find_norm(np.subtract(
+        x_accurate, x_error)) / metrics_finder.find_norm(x_accurate)
     print(actual_error)
     print('Оценка погрешности:')
     estimated_error = 0
