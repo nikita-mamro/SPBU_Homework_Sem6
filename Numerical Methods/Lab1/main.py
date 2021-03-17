@@ -24,8 +24,9 @@ def solve_system():
         x_accurate, x_error)) / metrics_finder.find_norm(x_accurate)
     print(actual_error)
     print('\nОценка погрешности:\n')
-    b_delta = np.subtract(constants.b_a, constants.b_b)
-    estimated_error = 0
+    estimated_error = condition_number * \
+        (metrics_finder.find_norm(np.subtract(constants.b_a, constants.b_b))
+         ) / metrics_finder.find_norm(constants.b_a)
     print(estimated_error)
 
 
