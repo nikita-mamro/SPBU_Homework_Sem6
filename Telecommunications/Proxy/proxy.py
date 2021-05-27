@@ -3,7 +3,7 @@ import sys
 import logging
 import threading
 
-from Proxy.http_request import HttpRequest
+from http_request import HttpRequest
 
 
 class ProxyServer:

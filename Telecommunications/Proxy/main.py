@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from Proxy.proxy import ProxyServer
+from proxy import ProxyServer
 
 
 def main():
