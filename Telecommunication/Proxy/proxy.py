@@ -1,4 +1,3 @@
-import signal
 import socket
 import sys
 import logging
@@ -6,6 +5,7 @@ import threading
 
 
 class ProxyServer:
+    """Class implementing proxy server with HTTP support"""
     def __init__(self, config):
         self.config = config
         # AF_INET address family, stream socket type
@@ -31,15 +31,16 @@ class ProxyServer:
         # Read request
         request = client_socket.recv(self.config['MAX_REQUEST_SIZE'])
         line = str(request).split('\n')[0]
-        method = line.split(' ')[0]
+        method = line.split(' ')[0][2:]
         # URL: 'http://address:port'
         if len(line.split(' ')) < 2:
             return
         url = line.split(' ')[1]
-
+        # If domain is in blacklist, close connection
         for blocked_domain in self.config['DOMAIN_BLACKLIST']:
             if blocked_domain in url:
                 client_socket.close()
+                logging.info(f'Blocked {blocked_domain}')
                 sys.exit(1)
 
         # Find '://'
@@ -65,17 +66,19 @@ class ProxyServer:
             server = tmp[:port_pos]
 
         try:
+            # Setup connection to destination and send copy of request
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(self.config['TIMEOUT'])
             s.connect((server, port))
             s.sendall(request)
-
+            # Redirect response back to client
             while True:
                 received_data = s.recv(self.config['MAX_REQUEST_SIZE'])
 
                 if len(received_data) > 0:
+                    # Send data to client
                     client_socket.send(received_data)
-                    logging.info(f'Served request {client_address[0]} -> {server}')
+                    logging.info(f'Served {method} request {client_address[0]} -> {server}')
                 else:
                     break
 
@@ -97,28 +100,3 @@ class ProxyServer:
             t.join()
             self.socket.close()
         sys.exit(0)
-
-
-def main():
-    logging.basicConfig(level=logging.INFO)
-    try:
-        port = int(input('Enter port for listening: '))
-    except ValueError:
-        logging.ERROR('Unable to process input')
-        sys.exit(0)
-
-    config = {
-        'HOST_NAME': '',
-        'PORT': port,
-        'MAX_CONNECTIONS': 10,
-        'MAX_REQUEST_SIZE': 4096,
-        'TIMEOUT': 5,
-        'DOMAIN_BLACKLIST': ['neverssl.com']
-    }
-
-    server = ProxyServer(config)
-    server.start()
-
-
-if __name__ == '__main__':
-    main()
