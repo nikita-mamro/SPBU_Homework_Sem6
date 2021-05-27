@@ -12,13 +12,16 @@ def main():
         logging.ERROR('Unable to process input')
         sys.exit(0)
 
+    with open('domain_blacklist.txt', 'r') as f:
+        domain_blacklist = f.read().split('\n')
+
     config = {
         'HOST_NAME': '',
         'PORT': port,
         'MAX_CONNECTIONS': 10,
-        'MAX_REQUEST_SIZE': 4096,
-        'TIMEOUT': 5,
-        'DOMAIN_BLACKLIST': ['neverssl.com']
+        'BUFFER_SIZE': 16384,
+        'TIMEOUT': 50,
+        'DOMAIN_BLACKLIST': domain_blacklist
     }
 
     server = ProxyServer(config)
