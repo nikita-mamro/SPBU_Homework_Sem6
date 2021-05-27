@@ -16,7 +16,7 @@ def main():
         'HOST_NAME': '',
         'PORT': port,
         'MAX_CONNECTIONS': 10,
-        'MAX_REQUEST_SIZE': 4096,
+        'MAX_REQUEST_SIZE': 16384,
         'TIMEOUT': 5,
         'DOMAIN_BLACKLIST': ['neverssl.com']
     }
