@@ -18,49 +18,54 @@ class ProxyServer:
         self.buffer_size = config['BUFFER_SIZE']
         self.domain_blacklist = config['DOMAIN_BLACKLIST']
         self.timeout = config['TIMEOUT']
-        # AF_INET address family, stream socket type
+        # Create TCP socket
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.start()
 
     def start(self):
         # Bind socket to host and port
         self.socket.bind((self.host_name, self.port))
+        # Listen for incoming connections
         self.socket.listen(self.max_connections)
         while True:
             # Establish connection, address: (ip, port)
             client_socket, address = self.socket.accept()
-            # Use separate thread to handle request
-            d = threading.Thread(name=address, target=self.handle_request,
-                                 args=(client_socket, address))
+            d = threading.Thread(target=self.handle_request,
+                                 args=[client_socket])
             d.setDaemon(True)
             d.start()
 
-    def handle_request(self, client_socket, address):
-        # Read request
-        data = client_socket.recv(self.buffer_size)
-        request = HttpRequest(data)
+    def handle_request(self, client_socket):
+        try:
+            # Receive data from socket
+            data = client_socket.recv(self.buffer_size)
 
-        if data:
-            # If domain is in blacklist, close connection
-            for blocked_domain in self.domain_blacklist:
-                if blocked_domain in request.url:
-                    client_socket.close()
-                    logging.info(f'Blocked domain: {blocked_domain}')
-                    sys.exit(1)
+            if data:
+                request = HttpRequest(data)
+                # If domain is in blacklist, close connection
+                for blocked_domain in self.domain_blacklist:
+                    if blocked_domain in request.url:
+                        client_socket.close()
+                        logging.info(f'Blocked domain: {blocked_domain}')
+                        sys.exit(1)
 
-            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server_socket.settimeout(self.timeout)
+                server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                server_socket.settimeout(self.timeout)
 
-            if request.method == 'CONNECT':
-                self.handle_https_request(request, client_socket, server_socket)
-            else:
-                self.handle_http_request(request, client_socket, server_socket)
+                if request.method == 'CONNECT':
+                    self.handle_https_request(request, client_socket, server_socket)
+                else:
+                    self.handle_http_request(request, client_socket, server_socket)
+        except socket.error:
+            pass
 
     def handle_http_request(self, request, client_socket, server_socket):
         try:
             # Setup connection to destination and send copy of request
             server_socket.connect((request.host, request.port))
+            # sendall() = send() until either all data is sent all error occurs
             server_socket.sendall(request.data)
             # Redirect response back to client
             while True:
@@ -68,7 +73,7 @@ class ProxyServer:
 
                 if len(received_data) > 0:
                     # Send data to client
-                    client_socket.send(received_data)
+                    client_socket.sendall(received_data)
                     logging.info(f'Served {request.method} client -> {request.host}')
                 else:
                     break
@@ -87,7 +92,7 @@ class ProxyServer:
         try:
             # Make connection to destination server
             server_socket.connect((request.host, request.port))
-            response = "HTTP/1.1 200 Connection established\nProxy-agent: VeryCoolProxy/1.1\n\n"
+            response = "HTTP/1.1 200 Connection established\nProxy-agent: P/1.1\n\n"
             # Send Connection established response to client
             client_socket.sendall(response.encode())
         except socket.error as error:

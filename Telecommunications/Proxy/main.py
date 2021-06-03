@@ -1,23 +1,21 @@
 import logging
-import sys
+import argparse
 
 from proxy import ProxyServer
 
 
 def main():
     logging.basicConfig(level=logging.INFO)
-    try:
-        port = int(input('Enter port for listening: '))
-    except ValueError:
-        logging.ERROR('Unable to process input')
-        sys.exit(0)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', dest='port', required=True, type=int)
+    args = parser.parse_args()
 
     with open('domain_blacklist.txt', 'r') as f:
         domain_blacklist = f.read().split('\n')
 
     config = {
         'HOST_NAME': '',
-        'PORT': port,
+        'PORT': args.port,
         'MAX_CONNECTIONS': 10,
         'BUFFER_SIZE': 16384,
         'TIMEOUT': 50,
