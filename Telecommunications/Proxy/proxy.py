@@ -17,10 +17,9 @@ class ProxyServer:
         self.max_connections = config['MAX_CONNECTIONS']
         self.buffer_size = config['BUFFER_SIZE']
         self.domain_blacklist = config['DOMAIN_BLACKLIST']
-        self.timeout = config['TIMEOUT']
         # Create TCP socket
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #
+        # Port with TIME_WAIT status will be recognised as unused
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.start()
 
@@ -34,38 +33,33 @@ class ProxyServer:
             client_socket, address = self.socket.accept()
             d = threading.Thread(target=self.handle_request,
                                  args=[client_socket])
-            d.setDaemon(True)
             d.start()
 
     def handle_request(self, client_socket):
-        try:
-            # Receive data from socket
-            data = client_socket.recv(self.buffer_size)
+        # Receive data from socket
+        data = client_socket.recv(self.buffer_size)
 
-            if data:
-                request = HttpRequest(data)
-                # If domain is in blacklist, close connection
-                for blocked_domain in self.domain_blacklist:
-                    if blocked_domain in request.url:
-                        client_socket.close()
-                        logging.info(f'Blocked domain: {blocked_domain}')
-                        sys.exit(1)
+        if data:
+            request = HttpRequest(data)
+            # If domain is in blacklist, close connection
+            for blocked_domain in self.domain_blacklist:
+                if blocked_domain in request.url:
+                    client_socket.close()
+                    logging.info(f'Blocked domain: {blocked_domain}')
+                    sys.exit(1)
 
-                server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                server_socket.settimeout(self.timeout)
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-                if request.method == 'CONNECT':
-                    self.handle_https_request(request, client_socket, server_socket)
-                else:
-                    self.handle_http_request(request, client_socket, server_socket)
-        except socket.error:
-            pass
+            if request.method == 'CONNECT':
+                self.handle_https_request(
+                    request, client_socket, server_socket)
+            else:
+                self.handle_http_request(request, client_socket, server_socket)
 
     def handle_http_request(self, request, client_socket, server_socket):
         try:
             # Setup connection to destination and send copy of request
             server_socket.connect((request.host, request.port))
-            # sendall() = send() until either all data is sent all error occurs
             server_socket.sendall(request.data)
             # Redirect response back to client
             while True:
@@ -74,7 +68,8 @@ class ProxyServer:
                 if len(received_data) > 0:
                     # Send data to client
                     client_socket.sendall(received_data)
-                    logging.info(f'Served {request.method} client -> {request.host}')
+                    logging.info(
+                        f'Served {request.method} client -> {request.host}')
                 else:
                     break
 
@@ -104,6 +99,7 @@ class ProxyServer:
 
         # Data tunneling to both directions begins
         # The proxy response does not necessarily have a Content-Type field
+        # Using recv() for TCP sockets
         while True:
             try:
                 data = client_socket.recv(self.buffer_size)
@@ -120,6 +116,7 @@ class ProxyServer:
                     server_socket.close()
                     break
                 client_socket.sendall(reply)
-                logging.info(f'Served {request.method} client -> {request.host}')
+                logging.info(
+                    f'Served {request.method} client -> {request.host}')
             except socket.error:
                 pass
