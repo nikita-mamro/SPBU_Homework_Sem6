@@ -17,31 +17,30 @@ class ProxyServer:
         self.max_connections = config['MAX_CONNECTIONS']
         self.buffer_size = config['BUFFER_SIZE']
         self.domain_blacklist = config['DOMAIN_BLACKLIST']
-        self.timeout = config['TIMEOUT']
-        # AF_INET address family, stream socket type
+        # Create TCP socket
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Port with TIME_WAIT status will be recognised as unused
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.start()
 
     def start(self):
         # Bind socket to host and port
         self.socket.bind((self.host_name, self.port))
+        # Listen for incoming connections
         self.socket.listen(self.max_connections)
         while True:
             # Establish connection, address: (ip, port)
             client_socket, address = self.socket.accept()
-            # Use separate thread to handle request
-            d = threading.Thread(name=address, target=self.handle_request,
-                                 args=(client_socket, address))
-            d.setDaemon(True)
+            d = threading.Thread(target=self.handle_request,
+                                 args=[client_socket])
             d.start()
 
-    def handle_request(self, client_socket, address):
-        # Read request
+    def handle_request(self, client_socket):
+        # Receive data from socket
         data = client_socket.recv(self.buffer_size)
-        request = HttpRequest(data)
 
         if data:
+            request = HttpRequest(data)
             # If domain is in blacklist, close connection
             for blocked_domain in self.domain_blacklist:
                 if blocked_domain in request.url:
@@ -50,10 +49,10 @@ class ProxyServer:
                     sys.exit(1)
 
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server_socket.settimeout(self.timeout)
 
             if request.method == 'CONNECT':
-                self.handle_https_request(request, client_socket, server_socket)
+                self.handle_https_request(
+                    request, client_socket, server_socket)
             else:
                 self.handle_http_request(request, client_socket, server_socket)
 
@@ -68,8 +67,9 @@ class ProxyServer:
 
                 if len(received_data) > 0:
                     # Send data to client
-                    client_socket.send(received_data)
-                    logging.info(f'Served {request.method} client -> {request.host}')
+                    client_socket.sendall(received_data)
+                    logging.info(
+                        f'Served {request.method} client -> {request.host}')
                 else:
                     break
 
@@ -87,7 +87,7 @@ class ProxyServer:
         try:
             # Make connection to destination server
             server_socket.connect((request.host, request.port))
-            response = "HTTP/1.1 200 Connection established\nProxy-agent: VeryCoolProxy/1.1\n\n"
+            response = "HTTP/1.1 200 Connection established\nProxy-agent: P/1.1\n\n"
             # Send Connection established response to client
             client_socket.sendall(response.encode())
         except socket.error as error:
@@ -99,6 +99,7 @@ class ProxyServer:
 
         # Data tunneling to both directions begins
         # The proxy response does not necessarily have a Content-Type field
+        # Using recv() for TCP sockets
         while True:
             try:
                 data = client_socket.recv(self.buffer_size)
@@ -115,6 +116,7 @@ class ProxyServer:
                     server_socket.close()
                     break
                 client_socket.sendall(reply)
-                logging.info(f'Served {request.method} client -> {request.host}')
+                logging.info(
+                    f'Served {request.method} client -> {request.host}')
             except socket.error:
                 pass

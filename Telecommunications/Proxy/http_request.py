@@ -7,7 +7,7 @@ class HttpRequest:
         if len(line.split(' ')) < 2:
             return
 
-        # URL: 'http://address:port'
+        # URL: 'http://host:port'
         self.method = line.split(' ')[0][2:]
         self.url = line.split(' ')[1]
 
@@ -21,14 +21,14 @@ class HttpRequest:
             tmp = self.url[(http_pos + 3):]
 
         port_pos = tmp.find(':')
-        host_pos = tmp.find('/')
+        host_last_pos = tmp.find('/')
 
-        if host_pos == -1:
-            host_pos = len(tmp)
+        if host_last_pos == -1:
+            host_last_pos = len(tmp)
 
-        if port_pos == -1 or host_pos < port_pos:
+        if port_pos == -1 or host_last_pos < port_pos:
             self.port = 80
-            self.host = tmp[:host_pos]
+            self.host = tmp[:host_last_pos]
         else:
-            self.port = int((tmp[port_pos + 1:])[:host_pos - port_pos - 1])
+            self.port = int((tmp[port_pos + 1:])[:host_last_pos - port_pos - 1])
             self.host = tmp[:port_pos]
